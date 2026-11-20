@@ -29,5 +29,8 @@ def adjudicate(s,c,decision,u):
     if c.status!='assessed':raise HTTPException(409,'索赔须完成风险分流，且不可重复裁决')
     i=s.scalar(select(Inspection).where(Inspection.claim_id==c.id))
     if not i:raise HTTPException(409,'必须先记录拆检意见')
+    from .voucher_service import inspect_voucher
+    chk=inspect_voucher(s,c)
+    if not chk['consistent']:raise HTTPException(409,'评分凭证核对未通过：'+'；'.join(chk['problems']))
     if decision=='paid' and c.risk is not None and c.risk>=.5 and not i.evidence_complete:raise HTTPException(409,'高争议风险索赔必须补齐拆检证据后才能赔付')
     c.status=decision;i.decision=decision;audit(s,u,'claim_adjudicated',f'{c.code}:{decision}');return claim_view(s,c)
